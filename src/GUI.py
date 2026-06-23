@@ -462,10 +462,12 @@ class LeftPane(tk.LabelFrame):
                 else:
                     match self.state.modbus_mode:
                         case ModbusMode.MASTER:
+                            print(f"Master received line: {line}")
                             if self.state.modbus_command == 2:
                                 data = utils.get_modbus_ascii_message_data(line)
                                 print(f"receiving from slave as master: {data}")
                         case ModbusMode.SLAVE:
+                            print(f"Slave received line: {line}")
                             addr = int(utils.get_modbus_ascii_message_address(line))
                             if addr == self.state.modbus_slave_addr or addr == 0:
                                 data = utils.get_modbus_ascii_message_data(line)
