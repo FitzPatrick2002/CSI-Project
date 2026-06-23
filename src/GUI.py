@@ -460,7 +460,7 @@ class LeftPane(tk.LabelFrame):
                 # Assemble single line until terminator
 
                 try:
-                    line = self.output_box_queue.get_nowait()
+                    line = self.output_box_queue.get()
                 except queue.Empty:
                     break
                 
