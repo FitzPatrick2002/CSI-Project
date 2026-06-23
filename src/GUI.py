@@ -475,9 +475,9 @@ class LeftPane(tk.LabelFrame):
                         self.registry.send_msg(Consts.PING_RESP)
                     case Consts.PING_RESP:
                         self.ping_end = time.perf_counter()
-                        self.output_box_queue.put(f"PING: {self.ping_end - self.ping_start} [s]" + "\n")
+                        self.text_output_w.insert(index="end", chars=f"PING: {self.ping_end - self.ping_start} [s]" + "\n")
                     case _:
-                        self.output_box_queue.put(line + "\n")
+                        self.text_output_w.insert(index="end", chars=line + "\n")
 
                 # Handle modbus
 
