@@ -346,8 +346,11 @@ class LeftPane(tk.LabelFrame):
         self.registry = ports_registry
         self.create_widgets()
 
+        self.received_queue = queue.Queue()
         self.output_box_queue = queue.Queue()
         self.ping_queue = queue.Queue()
+
+        self.registry.start_listenning_on_port(self.listen_on_port_loop)
 
     def create_widgets(self):
 
@@ -364,7 +367,7 @@ class LeftPane(tk.LabelFrame):
         # 4. Send button
         self.btn_send = tk.Button(self, text="SEND", command=self.send_msg)
 
-        self.btn_listen = tk.Button(self, text="LISTEN", bg="red", command=self.toggle_listen)
+        self.btn_listen = tk.Button(self, text="LISTEN", bg="red", command=self.toggle_listen_on_port)
         self.status_color = {False : "red", True : "green"}
         self.listenning = False
 
@@ -407,8 +410,15 @@ class LeftPane(tk.LabelFrame):
         self.ping_start = time.perf_counter()
         self.registry.send_msg(Consts.PING_REQ)
 
-    def toggle_listen(self):
+    def toggle_listen_on_port(self):
         ''' Toggles the listenning on port. '''
+
+        self.state.listen_on_port = not self.state.listen_on_port
+        self.btn_listen["bg"] = self.status_color[self.state.listen_on_port]
+
+        return
+
+        # --- END --- #
 
         if not self.registry.is_port_open():
             print("No port is open, nothing to listen to")
@@ -448,15 +458,24 @@ class LeftPane(tk.LabelFrame):
         else: 
             self.registry.stop_listenning_on_port()
 
+    def listen_on_port_loop(self):
+        ''' Main listenning loop. Puts incoming data into the self.received_queue. '''
+
+        print("Listenning logic here my ass")
+        time.sleep(3)
+
     def read_output_queue(self):
-            ''' Reads characters from output queue. Inserts them in the text_output_w widget.'''
-            # 0. Empty the queue
+            ''' Reads characters from output queue. Inserts them in the self.text_output_w widget.'''
 
-            while not self.output_box_queue.empty():
-                line = self.output_box_queue.get()
-                self.text_output_w.insert(index="end", chars=line)
-
-            # 1. Update GUI
+            if self.state.listen_on_port:
+                while not self.output_box_queue.empty():
+                    if self.state.modbus_on:
+                        pass
+                    else:
+                        line = self.output_box_queue.get()
+                        self.text_output_w.insert(index="end", chars=line)
+            else:
+                pass
 
             self.text_output_w.after(ms=1, func=self.read_output_queue)
 

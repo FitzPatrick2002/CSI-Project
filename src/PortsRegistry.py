@@ -25,8 +25,7 @@ class PortsRegistry:
         self.current_port = None
         self.current_port_lock = threading.RLock()
 
-        self.listenning_thread_run = True
-        self.listenning_thread = threading.Thread(target=self.start_listenning_on_port, daemon=True)
+        self.listenning_thread : threading.Thread = None
 
         self.terminator = ""
 
@@ -106,22 +105,25 @@ class PortsRegistry:
 
     # --- Communication --- #
 
-    def start_listenning_on_port(self, func=None):
-        ''' Starts a new thread which listens if there are any messages incoming. 
-        func : Function passed to _listen_on_port().
+    def start_listenning_on_port(self, func : callable = None):
+        ''' 
+        Starts a new thread which listens if there are any messages incoming. 
+        
+        Args:
+        - func (callable) : Function passed to _listen_on_port().
         '''
+
+        self.listenning_thread = threading.Thread(target=self._listen_on_port, args=(func,),daemon=True)
+        print("Starting thread")
+        self.listenning_thread.start()
+        return 
+    
         if not self.listenning_thread.is_alive():
             print("Starting to listen")
             self.current_port.reset_input_buffer()
             self.listenning_thread_run = True
             self.listenning_thread = threading.Thread(target=lambda : self._listen_on_port(func=func), daemon=True)
             self.listenning_thread.start()
-
-    def stop_listenning_on_port(self):
-        ''' Stops & joins the listenning thread. '''
-        print("Stopping to listen")
-        self.listenning_thread_run = False
-        self.listenning_thread.join()
 
     def send_msg(self, message : str):
         ''' Sends message with appended terminator via COM port. '''
@@ -205,15 +207,16 @@ class PortsRegistry:
 
     # ---------------- Internal Port Operations ---------------- #
 
-    def _listen_on_port(self, func : callable=None):
-        ''' Body of listenning thread.
-        callable : Invoked during each iteration of thread mainloop.
+    def _listen_on_port(self, func : callable):
+        ''' 
+        Body of the listenning thread.
+    
+        Args:
+        - body (callable) : Invoked during each iteration of the threads mainloop.
         '''
-        if self.current_port and self.current_port.is_open:
-            while self.listenning_thread_run:
+        while True:
+            if self.current_port and self.current_port.is_open:
                 with self.current_port_lock:
-                    if func:
-                        func()
-                    else:
-                        sleep(1.0)
-                        print("sleeping")
+                    func()
+            else:
+                sleep(1.0)

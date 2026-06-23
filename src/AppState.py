@@ -17,3 +17,5 @@ class AppState:
         self.modbus_retransmissions = 0
         self.modbus_target_addr = 0
         self.modbus_command = 1
+
+        self.listen_on_port = False
