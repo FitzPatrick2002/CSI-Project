@@ -427,7 +427,7 @@ class LeftPane(tk.LabelFrame):
             line = line.split(self.registry.terminator)
 
             if raw_data:
-                line = raw_data.decode("utf-8").strip()
+                line = raw_data.decode("utf-8")
                 print(f"Putting line in {line}")
                 self.output_box_queue.put(line)
                 '''
@@ -455,26 +455,22 @@ class LeftPane(tk.LabelFrame):
             ''' Reads characters from output queue. Inserts them in the text_output_w widget.'''
             # 0. Empty the queue
 
-            line = ""
-            line_buffer = ""
             while not self.output_box_queue.empty():
 
                 # Assemble single line until terminator
-                line = line_buffer
-                while not self.registry.terminator in line:
-                    line += self.output_box_queue.get()
 
-                print(f"Read line: {line}")
+                try:
+                    line = self.output_box_queue.get_nowait()
+                except queue.Empty:
+                    pass
+                
+                line = line.removesuffix(self.registry.terminator).strip()
 
-                message = line.split(self.registry.terminator)
-                line_buffer = message[1] if len(message) > 1 else  ""
-                message = message[0].removesuffix(self.registry.terminator)
-
-                print(f"Read message : {message}")
+                print(f"Read message : {line}")
 
                 # Handle PING
 
-                match message:
+                match line:
                     case Consts.PING_REQ:
                         self.registry.send_msg(Consts.PING_RESP)
                     case Consts.PING_RESP:
