@@ -55,7 +55,7 @@ def prepare_modbus_ascii_message(address : int, command : int, data : str) -> by
     command = f"{command:02X}".encode("ascii")
     data    = data.encode("ascii")
     lrc     = get_lrc(address + command + data)
-    lrc     = f"{rlc}:02X".encode('ascii')
+    lrc     = f"{lrc}:02X".encode('ascii')
     term = "\r\n".encode("ascii")
 
     message = colon + address + command + data + lrc + term
