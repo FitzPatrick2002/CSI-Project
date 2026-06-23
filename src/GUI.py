@@ -428,20 +428,7 @@ class LeftPane(tk.LabelFrame):
 
             if raw_data:
                 line = raw_data.decode("utf-8")
-                print(f"Putting line in {line}")
                 self.output_box_queue.put(line)
-                '''
-                match line:
-                    case Consts.PING_REQ:
-                        self.registry.send_msg(Consts.PING_RESP)
-                    case Consts.PING_RESP:
-                        #self.btn_ping['state'] = tk.NORMAL
-                        self.ping_end = time.perf_counter()
-                        ping_message = f"PING: {self.ping_end - self.ping_start} [s]"
-                        self.output_box_queue.put(ping_message + "\n")
-                    case _:
-                        self.output_box_queue.put(line + "\n")
-                '''
 
         # 2. Launch / Join the listenning thread
 
@@ -456,40 +443,35 @@ class LeftPane(tk.LabelFrame):
             # 0. Empty the queue
 
             while not self.output_box_queue.empty():
-
-                # Assemble single line until terminator
-
                 try:
                     line = self.output_box_queue.get()
                 except queue.Empty:
                     break
-                
+    
                 line = line.removesuffix(self.registry.terminator).strip()
 
-                print(f"Read message : {line}")
-
-                # Handle PING
-
-                match line:
-                    case Consts.PING_REQ:
-                        self.registry.send_msg(Consts.PING_RESP)
-                    case Consts.PING_RESP:
-                        self.ping_end = time.perf_counter()
-                        self.text_output_w.insert(index="end", chars=f"PING: {self.ping_end - self.ping_start} [s]" + "\n")
-                    case _:
-                        self.text_output_w.insert(index="end", chars=line + "\n")
-
-                # Handle modbus
-
-                if self.state.modbus_on:
-                    print("Handling modbus")
-
-                '''
-                line = self.output_box_queue.get()
-                self.text_output_w.insert(index="end", chars=line)
-                '''
-                
-            # 1. Update GUI
+                if not self.state.modbus_on:
+                    match line:
+                        case Consts.PING_REQ:
+                            self.registry.send_msg(Consts.PING_RESP)
+                        case Consts.PING_RESP:
+                            self.ping_end = time.perf_counter()
+                            self.text_output_w.insert(index="end", chars=f"PING: {self.ping_end - self.ping_start} [s]" + "\n")
+                        case _:
+                            self.text_output_w.insert(index="end", chars=line + "\n")
+                else:
+                    match self.state.modbus_mode:
+                        case ModbusMode.MASTER:
+                            if self.state.modbus_command == 2:
+                                data = utils.get_modbus_ascii_message_data(line)
+                                print(f"receiving from slave as master: {data}")
+                        case ModbusMode.SLAVE:
+                            addr = int(utils.get_modbus_ascii_message_address(line))
+                            if addr == self.state.modbus_slave_addr or addr == 0:
+                                data = utils.get_modbus_ascii_message_data(line)
+                                print(f"Receiving as slave: {data}")
+                        case _:
+                            pass
 
             self.text_output_w.after(ms=1, func=self.read_output_queue)
 

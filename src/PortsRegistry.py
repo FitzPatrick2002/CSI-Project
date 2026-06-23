@@ -132,7 +132,6 @@ class PortsRegistry:
     def send_modbus_ascii(self, address : int, command : int, data : str):
         message = utils.prepare_modbus_ascii_message(address, command, data)
         self.modbus_write_queue.put(message)
-        
 
     def modbus_write_thread_body(self):
         while True:

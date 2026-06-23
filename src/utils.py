@@ -61,20 +61,20 @@ def prepare_modbus_ascii_message(address : int, command : int, data : str) -> by
 
     return message
 
-def unformat_modbus_ascii_message(message : str):
-    '''
-    Removes all formatting from MODBUS ascii message and returns only the payload.
-    Mesage format: [:][addres - 2 chars][command - 2 chars][data - N chars][LRC - 2 chars][CR-LF - 2 chars]
-    '''
-    return message[5 : -4]
-
 def get_modbus_ascii_message_address(message : str):
     return message [1 : 3]
 
 def get_modbus_ascii_message_command(message : str):
     return message [3 : 5]
 
-def get_modbus_ascii_message_command(message : str):
+def get_modbus_ascii_message_data(message : str):
+    '''
+    Removes all formatting from MODBUS ascii message and returns only the payload.
+    Mesage format: [:][addres - 2 chars][command - 2 chars][data - N chars][LRC - 2 chars][CR-LF - 2 chars]
+    '''
+    return message[5 : -4]
+
+def get_modbus_ascii_message_lrc(message : str):
     return message [3 : 5]
 
 status_colors = {False : "Red", True : "Green"}
