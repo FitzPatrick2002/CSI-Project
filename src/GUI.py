@@ -428,6 +428,7 @@ class LeftPane(tk.LabelFrame):
 
             if raw_data:
                 line = raw_data.decode("utf-8").strip()
+                print(f"Putting line in {line}")
                 self.output_box_queue.put(line)
                 '''
                 match line:
@@ -463,9 +464,13 @@ class LeftPane(tk.LabelFrame):
                 while not self.registry.terminator in line:
                     line += self.output_box_queue.get()
 
+                print(f"Read line: {line}")
+
                 message = line.split(self.registry.terminator)
                 line_buffer = message[1] if len(message) > 1 else  ""
                 message = message[0].removesuffix(self.registry.terminator)
+
+                print(f"Read message : {message}")
 
                 # Handle PING
 
