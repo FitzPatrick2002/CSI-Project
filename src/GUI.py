@@ -15,10 +15,9 @@ from utils import ModbusMode
 from AppState import AppState
 
 # TODO:
-# - Modify "send" button logic 
-#   - Switch between modbus and normal mode based on the app state
-#   - Test if it works with arduino & without it (repetitions)
-# - Refactor PortsRegistry so that it uses the app state 
+# - MODBUS Receive
+#   - if in thread body
+#   - Switch slave / master
 
 class ModbusPane(tk.LabelFrame):
     ''' Contains MODBUS configuration & settings. '''
@@ -429,6 +428,8 @@ class LeftPane(tk.LabelFrame):
 
             if raw_data:
                 line = raw_data.decode("utf-8").strip()
+                self.output_box_queue.put(line)
+                '''
                 match line:
                     case Consts.PING_REQ:
                         self.registry.send_msg(Consts.PING_RESP)
@@ -439,6 +440,7 @@ class LeftPane(tk.LabelFrame):
                         self.output_box_queue.put(ping_message + "\n")
                     case _:
                         self.output_box_queue.put(line + "\n")
+                '''
 
         # 2. Launch / Join the listenning thread
 
@@ -452,10 +454,40 @@ class LeftPane(tk.LabelFrame):
             ''' Reads characters from output queue. Inserts them in the text_output_w widget.'''
             # 0. Empty the queue
 
+            line = ""
+            line_buffer = ""
             while not self.output_box_queue.empty():
+
+                # Assemble single line until terminator
+                line = line_buffer
+                while not self.registry.terminator in line:
+                    line += self.output_box_queue.get()
+
+                message = line.split(self.registry.terminator)
+                line_buffer = message[1] if len(message) > 1 else  ""
+                message = message[0].removesuffix(self.registry.terminator)
+
+                # Handle PING
+
+                match message:
+                    case Consts.PING_REQ:
+                        self.registry.send_msg(Consts.PING_RESP)
+                    case Consts.PING_RESP:
+                        self.ping_end = time.perf_counter()
+                        self.output_box_queue.put(f"PING: {self.ping_end - self.ping_start} [s]" + "\n")
+                    case _:
+                        self.output_box_queue.put(line + "\n")
+
+                # Handle modbus
+
+                if self.state.modbus_on:
+                    print("Handling modbus")
+
+                '''
                 line = self.output_box_queue.get()
                 self.text_output_w.insert(index="end", chars=line)
-
+                '''
+                
             # 1. Update GUI
 
             self.text_output_w.after(ms=1, func=self.read_output_queue)
