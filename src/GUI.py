@@ -462,7 +462,7 @@ class LeftPane(tk.LabelFrame):
                 try:
                     line = self.output_box_queue.get_nowait()
                 except queue.Empty:
-                    pass
+                    break
                 
                 line = line.removesuffix(self.registry.terminator).strip()
 
