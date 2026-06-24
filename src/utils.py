@@ -1,6 +1,7 @@
 from enum import Enum
 import tkinter as tk
 from tkinter import ttk
+from typing import Dict
 
 def get_lrc(message : bytes):
     '''
@@ -45,20 +46,18 @@ def prepare_modbus_ascii_message(address : int, command : int, data : str) -> by
         - data    (str) : Payload of the command. 
 
     Returns:
-        - (bytes)       : Message formatted according to the pattern above. 
+        - (bytes)       : Message formatted according to the pattern above, encoded in ascii format. 
     '''
-
-    print("formulatiing message")
-
     colon   = ":".encode("ascii")
     address = f"{address:02X}".encode("ascii")
     command = f"{command:02X}".encode("ascii")
     data    = data.encode("ascii")
     lrc     = get_lrc(address + command + data)
-    lrc     = f"{lrc}:02X".encode('ascii')
+    lrc     = f"{lrc:02X}".encode('ascii')
     term = "\r\n".encode("ascii")
 
     message = colon + address + command + data + lrc + term
+    print(f"formulatiing message: {message}")
 
     return message
 
@@ -70,13 +69,31 @@ def get_modbus_ascii_message_command(message : str):
 
 def get_modbus_ascii_message_data(message : str):
     '''
-    Removes all formatting from MODBUS ascii message and returns only the payload.
+    Removes all formatting from MODBUS ascii message and returns only the payload. Assumes, the CR-LF is cut out.
     Mesage format: [:][addres - 2 chars][command - 2 chars][data - N chars][LRC - 2 chars][CR-LF - 2 chars]
     '''
     return message[5 : -4]
 
 def get_modbus_ascii_message_lrc(message : str):
-    return message [3 : 5]
+    return message [-4 : -2]
+
+def get_modbus_ascii_message(message : str) -> Dict[str, str] | None:
+    addr = get_modbus_ascii_message_address(message)
+    comm = get_modbus_ascii_message(message)
+    data = get_modbus_ascii_message_data(message)
+    lrc  = get_modbus_ascii_message_lrc(message)
+
+    current_lrc = get_lrc(data)
+
+    if lrc != current_lrc:
+        return None
+    
+    return {
+        "addr" : addr,
+        "comm" : comm,
+        "data" : data,
+        "lrc"  : lrc
+    }
 
 status_colors = {False : "Red", True : "Green"}
 

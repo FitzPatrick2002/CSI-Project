@@ -15,9 +15,13 @@ from utils import ModbusMode
 from AppState import AppState
 
 # TODO:
-# - MODBUS Receive
-#   - if in thread body
-#   - Switch slave / master
+# - MODBUS:
+# - (ok) - comm 1 - addr -> send from master to slave
+# - (ok) - comm 1 - broadcast -> send from master to all slaves
+# - (ok) comm 1 - Check if master can't receive random slave transmissions
+# - comm 2 - addr -> Make sure that master can receive from the given slave
+# - comm 2 - broadcast -> make sure master recevies does not display anything
+# - Validate lrc
 
 class ModbusPane(tk.LabelFrame):
     ''' Contains MODBUS configuration & settings. '''
@@ -307,7 +311,9 @@ class RightPane(tk.LabelFrame):
                 config[flow_type] = True
 
             self.registry.apply_method_on_port("apply_settings", {"d" : config})
-            self.registry.terminator = self.terminator_w.get()
+
+            selected_terminator = self.terminator_w.get()
+            self.registry.terminator = utils.terminator_map.get(selected_terminator, selected_terminator)
 
     def toggle_dsrcts_monitor(self):
         self.dtrcts_monitor_run = not self.dtrcts_monitor_run
@@ -421,13 +427,15 @@ class LeftPane(tk.LabelFrame):
         # 1. Thread body
 
         def update_output_box():
-            raw_data = self.registry.apply_method_on_port("read_until", {"expected" : self.registry.terminator.encode("utf-8")})
+            encoding = "ascii" if self.state.modbus_on else "utf-8"
+
+            raw_data = self.registry.apply_method_on_port("read_until", {"expected" : self.registry.terminator.encode(encoding)})
             print(raw_data)
-            line = raw_data.decode("utf-8")
-            line = line.split(self.registry.terminator)
+            #line = raw_data.decode(encoding)
+            #line = line.split(self.registry.terminator)
 
             if raw_data:
-                line = raw_data.decode("utf-8")
+                line = raw_data.decode(encoding)
                 self.output_box_queue.put(line)
 
         # 2. Launch / Join the listenning thread
@@ -447,10 +455,9 @@ class LeftPane(tk.LabelFrame):
                     line = self.output_box_queue.get()
                 except queue.Empty:
                     break
-    
-                line = line.removesuffix(self.registry.terminator).strip()
 
                 if not self.state.modbus_on:
+                    line = line.removesuffix(self.registry.terminator.strip())
                     match line:
                         case Consts.PING_REQ:
                             self.registry.send_msg(Consts.PING_RESP)
@@ -462,18 +469,23 @@ class LeftPane(tk.LabelFrame):
                 else:
                     match self.state.modbus_mode:
                         case ModbusMode.MASTER:
-                            print(f"Master received line: {line}")
-                            if self.state.modbus_command == 2:
+                            print(f"Received message: {line}")
+                            if self.state.modbus_command == 2 and self.state.modbus_target_addr != 0:
                                 data = utils.get_modbus_ascii_message_data(line)
-                                print(f"receiving from slave as master: {data}")
+                                self.text_output_w.insert(index="end", chars=data + "\n")
                         case ModbusMode.SLAVE:
-                            print(f"Slave received line: {line}")
                             addr = int(utils.get_modbus_ascii_message_address(line))
                             if addr == self.state.modbus_slave_addr or addr == 0:
+                                comm = int(utils.get_modbus_ascii_message_command(line))
                                 data = utils.get_modbus_ascii_message_data(line)
-                                print(f"Receiving as slave: {data}")
+
+                                if comm == 1:
+                                    self.text_output_w.insert(index="end", chars=data + "\n")
+                                elif comm == 2:
+                                    self.state.modbus_target_addr = self.state.modbus_slave_addr
+                                    self.state.modbus_command = comm
                         case _:
-                            pass
+                            print("Neither slave nor master")
 
             self.text_output_w.after(ms=1, func=self.read_output_queue)
 

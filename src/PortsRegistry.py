@@ -28,7 +28,7 @@ class PortsRegistry:
         self.listenning_thread_run = True
         self.listenning_thread = threading.Thread(target=self.start_listenning_on_port, daemon=True)
 
-        self.terminator = ""
+        self.terminator = "\r\n"
 
         self.modbus_write_queue = Queue()
         self.modbus_write_thread = threading.Thread(target=self.modbus_write_thread_body, daemon=True)
@@ -125,6 +125,7 @@ class PortsRegistry:
 
     def send_msg(self, message : str):
         ''' Sends message with appended terminator via COM port. '''
+        print(f"Appending terminator: {self.terminator}")
         txt = message + self.terminator
         with self.current_port_lock:
             self.current_port.write(message.encode("utf-8"))
@@ -149,6 +150,7 @@ class PortsRegistry:
                             break
                         except TimeoutError:
                             attempt += 1
+                            print("Attempting retransmission")
 
     # --- Port Operations --- #
 
